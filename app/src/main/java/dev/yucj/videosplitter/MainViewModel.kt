@@ -35,6 +35,8 @@ data class UiState(
 
 sealed interface UpdateUiState {
     data object Hidden : UpdateUiState
+    data object Checking : UpdateUiState
+    data object UpToDate : UpdateUiState
     data class Available(val info: ReleaseInfo) : UpdateUiState
     data class Downloading(val progress: Int) : UpdateUiState
     data class Failed(val message: String) : UpdateUiState
@@ -48,11 +50,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Hidden)
     val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
 
-    init {
+    fun checkForUpdate() {
+        if (_updateState.value is UpdateUiState.Checking ||
+            _updateState.value is UpdateUiState.Downloading
+        ) {
+            return
+        }
         viewModelScope.launch {
-            // 靜默檢查：失敗（離線等）就不打擾使用者。
-            val info = runCatching { UpdateManager.checkForUpdate() }.getOrNull()
-            if (info != null) _updateState.value = UpdateUiState.Available(info)
+            _updateState.value = UpdateUiState.Checking
+            _updateState.value = try {
+                val info = UpdateManager.checkForUpdate()
+                if (info != null) UpdateUiState.Available(info) else UpdateUiState.UpToDate
+            } catch (e: Exception) {
+                UpdateUiState.Failed(e.message ?: e.toString())
+            }
         }
     }
 

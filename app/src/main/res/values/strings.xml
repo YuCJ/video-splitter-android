@@ -17,6 +17,9 @@
     <string name="job_cancelled">已取消，暫存檔已清除。</string>
     <string name="action_cancel">取消</string>
     <string name="action_reset">重新開始</string>
+    <string name="update_check">檢查更新</string>
+    <string name="update_checking">檢查中…</string>
+    <string name="update_up_to_date">已是最新版</string>
     <string name="update_available">有新版本 %1$s 可更新</string>
     <string name="update_action">下載並安裝</string>
     <string name="update_downloading">下載更新中…（%1$d%%）</string>

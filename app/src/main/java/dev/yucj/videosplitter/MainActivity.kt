@@ -82,6 +82,23 @@ private fun MainScreen(viewModel: MainViewModel) {
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             when (val update = updateState) {
+                UpdateUiState.Hidden, UpdateUiState.Checking, UpdateUiState.UpToDate -> Row {
+                    OutlinedButton(
+                        onClick = viewModel::checkForUpdate,
+                        enabled = update != UpdateUiState.Checking,
+                    ) {
+                        Text(
+                            stringResource(
+                                when (update) {
+                                    UpdateUiState.Checking -> R.string.update_checking
+                                    UpdateUiState.UpToDate -> R.string.update_up_to_date
+                                    else -> R.string.update_check
+                                },
+                            ),
+                        )
+                    }
+                }
+
                 is UpdateUiState.Available -> Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(stringResource(R.string.update_available, update.info.version))
@@ -101,12 +118,15 @@ private fun MainScreen(viewModel: MainViewModel) {
                     }
                 }
 
-                is UpdateUiState.Failed -> Text(
-                    stringResource(R.string.update_failed, update.message),
-                    color = MaterialTheme.colorScheme.error,
-                )
-
-                UpdateUiState.Hidden -> Unit
+                is UpdateUiState.Failed -> Column {
+                    Text(
+                        stringResource(R.string.update_failed, update.message),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    OutlinedButton(onClick = viewModel::checkForUpdate) {
+                        Text(stringResource(R.string.update_check))
+                    }
+                }
             }
 
             Button(
