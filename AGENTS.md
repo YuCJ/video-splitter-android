@@ -39,7 +39,7 @@
 ./gradlew :app:assembleRelease
 ```
 
-- Release build 用 debug keystore 簽章（repo 內沒有、也不准放任何私有簽章檔或 API key）。
+- Release 簽章：CI 用固定的 release keystore（repo secrets `RELEASE_KEYSTORE_BASE64` / `RELEASE_KEYSTORE_PASSWORD`，經 `RELEASE_KEYSTORE_PATH` / `RELEASE_KEYSTORE_PASSWORD` 環境變數餵給 Gradle），確保每版簽章一致、APK 可覆蓋更新。本機沒設這些環境變數時退回 debug key。repo 內不准放任何 keystore 或 API key。
 - CI/CD：push 到 `main` 會觸發 `.github/workflows/release.yml`，打包 release APK 並建立 GitHub Release 供下載。
 
 ## 慣例

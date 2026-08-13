@@ -18,6 +18,22 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        // CI 從 repo secrets 還原 keystore 後以環境變數提供；
+        // 本機沒設這些變數時退回 debug key，方便直接 assembleRelease。
+        // 更新安裝要求簽章一致，所以正式發佈一律走 CI 的固定 key。
+        val keystorePath = System.getenv("RELEASE_KEYSTORE_PATH")
+        val keystorePassword = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+        if (keystorePath != null && keystorePassword != null) {
+            create("release") {
+                storeFile = file(keystorePath)
+                storePassword = keystorePassword
+                keyAlias = "release"
+                keyPassword = keystorePassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -25,9 +41,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            // Signed with the auto-generated debug keystore so CI can publish an
-            // installable APK without a private signing key in the repo.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release")
+                ?: signingConfigs.getByName("debug")
         }
     }
 
