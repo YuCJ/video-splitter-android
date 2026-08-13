@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!-- 剪刀剪膠卷的簡化輪廓（通知列單色小圖示） -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M4,5h16v14h-16z M6,7v2h2v-2z M6,11v2h2v-2z M6,15v2h2v-2z M16,7v2h2v-2z M16,11v2h2v-2z M16,15v2h2v-2z M10,8h4v8h-4z"
+        android:fillType="evenOdd" />
+</vector>

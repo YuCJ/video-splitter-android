@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFE1EC"
+        android:pathData="M0,0h108v108h-108z" />
+    <!-- 右下角一點淡淡的裝飾圓，讓底色不那麼死板 -->
+    <path
+        android:fillColor="#FFD0E2"
+        android:pathData="M84,84 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0" />
+    <path
+        android:fillColor="#FFD0E2"
+        android:pathData="M20,16 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0" />
+</vector>
