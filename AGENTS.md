@@ -31,6 +31,7 @@
 - 單段 export 失敗不中斷整批；HDR 來源失敗會強制 tone map 成 SDR 重試一次，最後回報成功/失敗清單。
 - 取消時停止當前 export 並刪除 `filesDir/splits/` 暫存檔。
 - 全部段落完成後才寫入 MediaStore。
+- MediaStore 的 `DATE_TAKEN`/`DATE_ADDED` 以原始影片拍攝時間為基準、每段 +index 秒（part_001 最早），讓 IG 等照時間排序的選檔清單維持段落順序；原檔讀不到拍攝時間時以完成當下為基準。
 
 ## 建置
 

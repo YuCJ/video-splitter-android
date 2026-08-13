@@ -11,12 +11,17 @@ object MediaStoreSaver {
 
     private const val RELATIVE_DIR = "Movies/VideoSplitter"
 
-    fun save(context: Context, file: File): Uri {
+    fun save(context: Context, file: File, takenAtMs: Long): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             put(MediaStore.Video.Media.RELATIVE_PATH, RELATIVE_DIR)
+            // IG 等相簿選單照時間排序，不看檔名；每段給遞增的時間戳才能維持 part 順序。
+            // DATE_TAKEN 是毫秒、DATE_ADDED/DATE_MODIFIED 是秒。
+            put(MediaStore.Video.Media.DATE_TAKEN, takenAtMs)
+            put(MediaStore.Video.Media.DATE_ADDED, takenAtMs / 1000)
+            put(MediaStore.Video.Media.DATE_MODIFIED, takenAtMs / 1000)
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
 
