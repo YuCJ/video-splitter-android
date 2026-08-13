@@ -11,17 +11,16 @@ object MediaStoreSaver {
 
     private const val RELATIVE_DIR = "Movies/VideoSplitter"
 
-    fun save(context: Context, file: File, takenAtMs: Long): Uri {
+    fun save(context: Context, file: File): Uri {
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, file.name)
             put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
             put(MediaStore.Video.Media.RELATIVE_PATH, RELATIVE_DIR)
-            // IG 等相簿選單照時間排序，不看檔名；每段給遞增的時間戳才能維持 part 順序。
-            // DATE_TAKEN 是毫秒、DATE_ADDED/DATE_MODIFIED 是秒。
-            put(MediaStore.Video.Media.DATE_TAKEN, takenAtMs)
-            put(MediaStore.Video.Media.DATE_ADDED, takenAtMs / 1000)
-            put(MediaStore.Video.Media.DATE_MODIFIED, takenAtMs / 1000)
+            // 不要在這裡寫 DATE_ADDED/DATE_TAKEN/DATE_MODIFIED：MediaProvider 在 insert 時
+            // 會無條件把 DATE_ADDED 蓋成當下時間，清 IS_PENDING 發佈時又會觸發 scan，
+            // 把 DATE_TAKEN/DATE_MODIFIED 從檔案本身重算——app 給的值都活不下來。
+            // 段落順序改由呼叫端「每段 insert 之間跨秒」來保證（見 SplitService）。
             put(MediaStore.Video.Media.IS_PENDING, 1)
         }
 

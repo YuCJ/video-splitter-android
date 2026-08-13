@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -61,8 +62,7 @@ class SplitService : Service() {
     private suspend fun runSplitJob(uri: Uri, maxSec: Int, mode: SplitMode) {
         val results = mutableListOf<SegmentResult>()
         try {
-            val metadata = withContext(Dispatchers.IO) { readMetadata(uri) }
-            val (durationMs, bitrate) = metadata.durationMs to metadata.bitrate
+            val (durationMs, bitrate) = withContext(Dispatchers.IO) { readMetadata(uri) }
             val segments = SplitPlanner.plan(durationMs, maxSec, mode)
             val exporter = SegmentExporter(this, bitrate)
             val tempDir = tempDir().apply { mkdirs() }
@@ -98,18 +98,22 @@ class SplitService : Service() {
             }
 
             // 全部段落跑完後才寫進 MediaStore，避免使用者中途取消留下半套結果。
-            // 時間戳以原始影片的拍攝時間為基準（讀不到就用現在），
-            // 每段 +index 秒：part_001 最早，時間排序的清單（含 IG 選檔）就會照段落順序。
-            val baseTakenMs = metadata.takenAtMs ?: System.currentTimeMillis()
+            // IG 等選檔清單照 DATE_ADDED（秒精度）排序，而這個欄位由 MediaProvider 在
+            // insert 時蓋成當下時間、app 給的值不會保留，所以只能靠「每段 insert 之間
+            // 跨秒」讓時間戳嚴格遞增，part 順序才不會因同秒平手而亂掉。
             val finalResults = withContext(Dispatchers.IO) {
+                var lastSavedSec = 0L
                 results.map { result ->
                     if (!result.success) return@map result
                     try {
+                        while (System.currentTimeMillis() / 1000 <= lastSavedSec) {
+                            delay(50)
+                        }
                         val saved = MediaStoreSaver.save(
                             this@SplitService,
                             File(tempDir(), result.fileName),
-                            takenAtMs = baseTakenMs + result.index * 1000L,
                         )
+                        lastSavedSec = System.currentTimeMillis() / 1000
                         result.copy(mediaStoreUri = saved.toString())
                     } catch (e: Exception) {
                         result.copy(success = false, error = "存入 MediaStore 失敗：${e.message}")
@@ -134,8 +138,6 @@ class SplitService : Service() {
     private data class SourceMetadata(
         val durationMs: Long,
         val bitrate: Int,
-        /** 原始影片的拍攝時間（epoch 毫秒），讀不到為 null。 */
-        val takenAtMs: Long?,
     )
 
     private fun readMetadata(uri: Uri): SourceMetadata {
@@ -150,30 +152,10 @@ class SplitService : Service() {
                 .extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
                 ?.toIntOrNull()
                 ?: 0
-            val takenAt = retriever
-                .extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE)
-                ?.let(::parseMediaDate)
-            SourceMetadata(duration, bitrate, takenAt)
+            SourceMetadata(duration, bitrate)
         } finally {
             retriever.release()
         }
-    }
-
-    private fun parseMediaDate(raw: String): Long? {
-        // mp4 的 creation date 常見兩種格式，皆為 UTC。
-        val patterns = listOf("yyyyMMdd'T'HHmmss.SSS'Z'", "yyyyMMdd'T'HHmmss'Z'")
-        for (pattern in patterns) {
-            try {
-                val fmt = java.text.SimpleDateFormat(pattern, java.util.Locale.US)
-                fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
-                val time = fmt.parse(raw)?.time ?: continue
-                // 沒設定過日期的相機會寫 1904/1970 附近的值，視為無效。
-                if (time > 946_684_800_000L) return time // 2000-01-01
-            } catch (_: java.text.ParseException) {
-                // 試下一個格式
-            }
-        }
-        return null
     }
 
     private fun tempDir() = File(filesDir, "splits")
