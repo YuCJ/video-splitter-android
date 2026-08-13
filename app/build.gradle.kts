@@ -14,8 +14,10 @@ android {
         applicationId = "dev.yucj.videosplitter"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI 注入正式版本（-PappVersionCode/-PappVersionName）；本機 build 用 -dev 後綴，
+        // 更新檢查把 -dev 視為比任何正式版舊。
+        versionCode = providers.gradleProperty("appVersionCode").orNull?.toInt() ?: 1
+        versionName = providers.gradleProperty("appVersionName").orNull ?: "0.1.0-dev"
     }
 
     signingConfigs {
@@ -53,6 +55,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

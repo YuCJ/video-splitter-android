@@ -1,48 +1,13 @@
 # Video Splitter (Android)
 
-把一支影片切成多個片段（例如供 Instagram 上傳），輸出 H.264 + AAC 的 mp4 到相簿 `Movies/VideoSplitter/`。
+把一支影片切成多段 mp4（供 Instagram 上傳），輸出到相簿 `Movies/VideoSplitter/`。
 
-`README.md` 是指向本檔的 symlink，僅為了 GitHub 預覽。
-
-## 架構
-
-- Kotlin + Coroutines + Jetpack Compose (Material 3)。
-- 轉檔用 **Jetpack Media3 Transformer**（裁切 + re-encode）。不要改用 FFmpeg 或 MediaMuxer/MediaExtractor——這是已定案的技術決策。
-- 輸出一律 H.264 + AAC mp4（IG 相容性）；解析度與幀率保留來源，視訊 bitrate 沿用來源影片的 bitrate。
-- 切割在 Foreground Service（`SplitService`）執行，循序處理、一次只跑一個 Transformer instance，避免 MediaCodec 資源衝突。
-
-## 檔案職責
-
-| 檔案 | 職責 |
-| --- | --- |
-| `app/src/main/java/dev/yucj/videosplitter/MainActivity.kt` | Compose UI：選影片、每段秒數 slider、切段模式 toggle、段數預覽、進度、結果清單 |
-| `.../MainViewModel.kt` | UI 狀態、讀影片長度（MediaMetadataRetriever）、啟動/取消 service |
-| `.../split/SplitPlanner.kt` | 純邏輯：把總長度依模式（平均分配 / 固定長度）算成各段起訖時間 |
-| `.../split/SplitService.kt` | Foreground Service：循序 export 各段、進度通知、取消、寫入 MediaStore、清暫存 |
-| `.../split/SegmentExporter.kt` | 包一段 Transformer export 成 suspend function（`suspendCancellableCoroutine`），含 HDR tone-map fallback 與進度輪詢 |
-| `.../split/MediaStoreSaver.kt` | 把私有目錄的 mp4 複製進 MediaStore `Movies/VideoSplitter/` |
-| `.../split/SplitState.kt` | Service ↔ UI 的狀態流（process 內 singleton `StateFlow`） |
-
-## 行為細節
-
-- 切段模式：
-  - 平均分配：段數 = `ceil(duration / 最大秒數)`，每段等長。
-  - 固定長度：每段 = 設定秒數，最後一段為剩餘長度。
-- 單段 export 失敗不中斷整批；HDR 來源失敗會強制 tone map 成 SDR 重試一次，最後回報成功/失敗清單。
-- 取消時停止當前 export 並刪除 `filesDir/splits/` 暫存檔。
-- 全部段落完成後才寫入 MediaStore。
-- MediaStore 的 `DATE_TAKEN`/`DATE_ADDED` 以原始影片拍攝時間為基準、每段 +index 秒（part_001 最早），讓 IG 等照時間排序的選檔清單維持段落順序；原檔讀不到拍攝時間時以完成當下為基準。
-
-## 建置
-
-```bash
-./gradlew :app:assembleRelease
-```
-
-- Release 簽章：CI 用固定的 release keystore（repo secrets `RELEASE_KEYSTORE_BASE64` / `RELEASE_KEYSTORE_PASSWORD`，經 `RELEASE_KEYSTORE_PATH` / `RELEASE_KEYSTORE_PASSWORD` 環境變數餵給 Gradle），確保每版簽章一致、APK 可覆蓋更新。本機沒設這些環境變數時退回 debug key。repo 內不准放任何 keystore 或 API key。
-- CI/CD：push 到 `main` 會觸發 `.github/workflows/release.yml`，打包 release APK 並建立 GitHub Release 供下載。
-
-## 慣例
-
+- 轉檔一律用 Jetpack Media3 Transformer，不要改用 FFmpeg 或 MediaMuxer/MediaExtractor——已定案的技術決策。
+- 輸出一律 H.264 + AAC mp4（IG 相容性）；盡量保留來源品質（解析度、幀率不動，視訊 bitrate 沿用來源）。
+- 一次只跑一個 Transformer instance（循序處理），避免 MediaCodec 資源衝突。
+- 寫進 MediaStore 的每段要給遞增的 `DATE_TAKEN`（part_001 最早），IG 選檔清單才會照段落順序。
+- Release 簽章：CI 從 repo secrets（`RELEASE_KEYSTORE_BASE64` / `RELEASE_KEYSTORE_PASSWORD`）還原固定 keystore，經 `RELEASE_KEYSTORE_PATH` / `RELEASE_KEYSTORE_PASSWORD` 環境變數餵給 Gradle——簽章不一致的 APK 無法覆蓋更新。本機建置沒設環境變數時退回 debug key。
+- 版本號由 CI 注入（`-PappVersionCode`/`-PappVersionName`，tag 為 `v<versionName>`），app 內建更新檢查靠這個 tag 格式與 GitHub Releases API 比對——改版本方案時 workflow、build script、`UpdateManager` 要一起改。
+- repo 內不准放任何 keystore、API key 或個人資訊；`local.properties`、`*.keystore` 已在 `.gitignore`。
 - Commit 訊息用 conventional commits（`feat:`、`fix:`、`chore:`…）。
-- 依賴版本集中在 `gradle/libs.versions.toml`。
+- `README.md` 與 `CLAUDE.md` 都是指向本檔的 symlink（GitHub 預覽用、Claude Code 只讀 `CLAUDE.md`）。

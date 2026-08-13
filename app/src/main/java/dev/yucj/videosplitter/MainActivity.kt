@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
 private fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val jobState by viewModel.jobState.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
 
     val pickVideo = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -80,6 +81,34 @@ private fun MainScreen(viewModel: MainViewModel) {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            when (val update = updateState) {
+                is UpdateUiState.Available -> Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(stringResource(R.string.update_available, update.info.version))
+                        Button(onClick = viewModel::downloadAndInstallUpdate) {
+                            Text(stringResource(R.string.update_action))
+                        }
+                    }
+                }
+
+                is UpdateUiState.Downloading -> Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(stringResource(R.string.update_downloading, update.progress))
+                        LinearProgressIndicator(
+                            progress = { update.progress / 100f },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                }
+
+                is UpdateUiState.Failed -> Text(
+                    stringResource(R.string.update_failed, update.message),
+                    color = MaterialTheme.colorScheme.error,
+                )
+
+                UpdateUiState.Hidden -> Unit
+            }
+
             Button(
                 onClick = {
                     pickVideo.launch(

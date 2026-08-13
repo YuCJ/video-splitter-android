@@ -11,6 +11,8 @@ import dev.yucj.videosplitter.split.SplitMode
 import dev.yucj.videosplitter.split.SplitPlanner
 import dev.yucj.videosplitter.split.SplitService
 import dev.yucj.videosplitter.split.SplitStateHolder
+import dev.yucj.videosplitter.update.ReleaseInfo
+import dev.yucj.videosplitter.update.UpdateManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,10 +33,44 @@ data class UiState(
             .orEmpty()
 }
 
+sealed interface UpdateUiState {
+    data object Hidden : UpdateUiState
+    data class Available(val info: ReleaseInfo) : UpdateUiState
+    data class Downloading(val progress: Int) : UpdateUiState
+    data class Failed(val message: String) : UpdateUiState
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Hidden)
+    val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            // 靜默檢查：失敗（離線等）就不打擾使用者。
+            val info = runCatching { UpdateManager.checkForUpdate() }.getOrNull()
+            if (info != null) _updateState.value = UpdateUiState.Available(info)
+        }
+    }
+
+    fun downloadAndInstallUpdate() {
+        val info = (_updateState.value as? UpdateUiState.Available)?.info ?: return
+        viewModelScope.launch {
+            try {
+                _updateState.value = UpdateUiState.Downloading(0)
+                val apk = UpdateManager.downloadApk(getApplication(), info.apkUrl) { progress ->
+                    _updateState.value = UpdateUiState.Downloading(progress)
+                }
+                UpdateManager.installApk(getApplication(), apk)
+                _updateState.value = UpdateUiState.Available(info)
+            } catch (e: Exception) {
+                _updateState.value = UpdateUiState.Failed(e.message ?: e.toString())
+            }
+        }
+    }
 
     val jobState: StateFlow<SplitJobState> = SplitStateHolder.state
 

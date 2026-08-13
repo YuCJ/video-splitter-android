@@ -17,6 +17,10 @@
     <string name="job_cancelled">已取消，暫存檔已清除。</string>
     <string name="action_cancel">取消</string>
     <string name="action_reset">重新開始</string>
+    <string name="update_available">有新版本 %1$s 可更新</string>
+    <string name="update_action">下載並安裝</string>
+    <string name="update_downloading">下載更新中…（%1$d%%）</string>
+    <string name="update_failed">更新失敗：%1$s</string>
     <string name="notification_channel_name">切割進度</string>
     <string name="notification_preparing">準備中…</string>
     <string name="notification_progress">第 %1$d / %2$d 段（%3$d%%）</string>
